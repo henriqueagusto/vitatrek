@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitaTrack — Plataforma de Saúde Pessoal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── RESET & BASE ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f9fafb; color: #111; }
+  button { cursor: pointer; font-family: inherit; transition: opacity .15s, transform .1s; }
+  button:hover { opacity: .88; }
+  button:active { transform: scale(.97); }
+  input, select, textarea { font-family: inherit; }
+  a { text-decoration: none; }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; min-height: 100vh; }
+  #sidebar {
+    width: 210px; min-height: 100vh; background: #fff;
+    border-right: 1px solid #f0f0f0; display: flex;
+    flex-direction: column; flex-shrink: 0; position: fixed;
+    top: 0; left: 0; bottom: 0; z-index: 100;
+  }
+  #main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #topbar {
+    height: 58px; background: #fff; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; position: sticky; top: 0; z-index: 50;
+  }
+  #content { flex: 1; overflow-y: auto; }
+
+  /* ── SIDEBAR ── */
+  .sidebar-logo {
+    padding: 18px 18px 14px; border-bottom: 1px solid #f5f5f5;
+    display: flex; align-items: center; gap: 10;
+  }
+  .logo-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 15px; flex-shrink: 0;
+  }
+  .logo-text { font-weight: 800; font-size: 17px; color: #111; letter-spacing: -.3px; }
+  #sidebar nav { flex: 1; padding: 10px; }
+  .nav-btn {
+    width: 100%; text-align: left; padding: 9px 12px;
+    border-radius: 8px; border: none; background: transparent;
+    color: #666; font-weight: 500; font-size: 13px;
+    display: flex; align-items: center; gap: 9px; margin-bottom: 2px;
+    transition: background .15s, color .15s;
+  }
+  .nav-btn.active { font-weight: 700; }
+  .nav-btn:hover:not(.active) { background: #f5f5f5; }
+  .sidebar-user {
+    padding: 14px; border-top: 1px solid #f5f5f5;
+    display: flex; align-items: center; gap: 10;
+  }
+  .avatar {
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 800; flex-shrink: 0;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar h1 { font-size: 17px; font-weight: 800; color: #111; }
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  #notif-btn {
+    position: relative; background: none; border: none;
+    font-size: 18px; color: #666; padding: 4px;
+  }
+  .notif-badge {
+    position: absolute; top: -3px; right: -3px; background: #F59E0B;
+    color: #fff; border-radius: 50%; width: 16px; height: 16px;
+    font-size: 9px; font-weight: 800; display: flex;
+    align-items: center; justify-content: center;
+  }
+  #logout-btn {
+    background: none; border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 5px 12px; font-size: 12px; color: #666; font-weight: 600;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 24px; }
+  .screen.active { display: block; }
+
+  /* ── LOGIN ── */
+  #screen-login {
+    min-height: 100vh; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .login-box {
+    background: #fff; border-radius: 20px; padding: 36px 40px;
+    width: 400px; box-shadow: 0 8px 40px rgba(0,0,0,.09);
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo-icon {
+    width: 52px; height: 52px; border-radius: 14px; background: #10B981;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 26px; color: #fff; margin-bottom: 10px;
+  }
+  .login-logo h2 { font-size: 26px; font-weight: 800; color: #111; letter-spacing: -.5px; }
+  .login-logo p { font-size: 13px; color: #999; margin-top: 3px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { font-size: 12px; font-weight: 700; color: #666; display: block; margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid #e5e5e5;
+    border-radius: 10px; font-size: 14px; outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus { border-color: #10B981; }
+  .forgot { text-align: right; margin-bottom: 20px; }
+  .forgot a { font-size: 12px; color: #10B981; }
+  .btn-primary {
+    width: 100%; padding: 12px; background: #10B981; color: #fff;
+    border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+    margin-bottom: 18px;
+  }
+  .demo-divider { border-top: 1px solid #f0f0f0; padding-top: 16px; }
+  .demo-divider p { font-size: 12px; color: #bbb; text-align: center; margin-bottom: 10px; }
+  .demo-btns { display: flex; flex-direction: column; gap: 8px; }
+  .demo-btn { padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700; border: 1.5px solid; }
+  .demo-patient { background: #f0fdf4; color: #10B981; border-color: #d1fae5; }
+  .demo-doctor { background: #eff6ff; color: #3B82F6; border-color: #dbeafe; }
+  .demo-family { background: #faf5ff; color: #8B5CF6; border-color: #ede9fe; }
+
+  /* ── CARDS ── */
+  .card { background: #fff; border-radius: 12px; padding: 18px; border: 1px solid #f0f0f0; }
+  .card-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .stat-card { border-radius: 12px; padding: 16px 18px; }
+  .stat-label { font-size: 11px; color: #888; font-weight: 600; margin-bottom: 6px; }
+  .stat-val { font-size: 24px; font-weight: 800; line-height: 1; }
+  .stat-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 700; color: #aaa; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+  td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid #f9f9f9; }
+
+  /* ── BADGES ── */
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .badge-green { background: #f0fdf4; color: #10B981; }
+  .badge-orange { background: #fef3c7; color: #d97706; }
+  .badge-red { background: #fee2e2; color: #dc2626; }
+  .badge-blue { background: #eff6ff; color: #3B82F6; }
+  .badge-purple { background: #faf5ff; color: #8B5CF6; }
+
+  /* ── BUTTONS ── */
+  .btn { padding: 8px 16px; border-radius: 9px; border: none; font-size: 12px; font-weight: 700; }
+  .btn-green { background: #10B981; color: #fff; }
+  .btn-blue { background: #3B82F6; color: #fff; }
+  .btn-purple { background: #8B5CF6; color: #fff; }
+  .btn-outline-green { background: #f0fdf4; color: #10B981; border: 1.5px solid #d1fae5; }
+  .btn-outline-blue { background: #eff6ff; color: #3B82F6; border: 1px solid #dbeafe; }
+  .btn-ghost { background: #fafafa; color: #888; border: 1px solid #e5e5e5; }
+
+  /* ── FORM ELEMENTS ── */
+  .field { margin-bottom: 16px; }
+  .field label { font-size: 12px; font-weight: 700; color: #666; display: block; margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #e5e5e5;
+    border-radius: 9px; font-size: 13px; outline: none;
+    transition: border-color .2s; background: #fff;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #10B981; }
+  .field input[readonly] { background: #fafafa; color: #888; }
+  .field textarea { resize: none; }
+  input[type=range] { width: 100%; accent-color: #10B981; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap { background: #f0f0f0; border-radius: 99px; height: 8px; margin-bottom: 22px; }
+  .progress-bar { border-radius: 99px; height: 8px; background: #10B981; transition: width .4s ease; }
+
+  /* ── NOTIFICATIONS PANEL ── */
+  #notif-panel {
+    display: none; position: fixed; top: 58px; right: 16px;
+    width: 310px; background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.12); border: 1px solid #f0f0f0;
+    z-index: 200; overflow: hidden;
+  }
+  #notif-panel.open { display: block; }
+  .notif-header { padding: 13px 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+  .notif-header span { font-size: 13px; font-weight: 800; }
+  .notif-header button { background: none; border: none; font-size: 14px; color: #aaa; }
+  .notif-item { padding: 11px 16px; border-bottom: 1px solid #f9f9f9; display: flex; gap: 10px; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-msg { font-size: 12px; font-weight: 600; color: #333; }
+  .notif-time { font-size: 10px; color: #bbb; margin-top: 2px; }
+
+  /* ── TOAST ── */
+  #toast {
+    display: none; position: fixed; bottom: 20px; right: 20px;
+    background: #10B981; color: #fff; padding: 12px 20px;
+    border-radius: 12px; font-weight: 700; font-size: 13px;
+    box-shadow: 0 4px 20px rgba(16,185,129,.4); z-index: 9999;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* ── OVERLAY ── */
+  #overlay { display: none; position: fixed; inset: 0; z-index: 150; }
+  #overlay.open { display: block; }
+
+  /* ── PATIENT SPECIFIC ── */
+  .med-card { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #f0f0f0; margin-bottom: 10px; }
+  .med-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .med-time-btn {
+    padding: 9px 16px; border-radius: 9px; border: none;
+    font-weight: 700; font-size: 12px; display: inline-flex;
+    align-items: center; gap: 7px; transition: background .2s, color .2s;
+  }
+  .med-time-btn.taken { background: #10B981; color: #fff; }
+  .med-time-btn.pending { background: #f5f5f5; color: #555; }
+
+  /* ── PATIENT EXPANDABLE ── */
+  .patient-card { background: #fff; border-radius: 12px; border: 1.5px solid #f0f0f0; overflow: hidden; margin-bottom: 10px; }
+  .patient-card.critical { border-color: #fed7aa; }
+  .patient-header { padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .patient-body { display: none; padding: 0 16px 16px; border-top: 1px solid #f5f5f5; }
+  .patient-body.open { display: block; }
+  .chevron { margin-left: auto; font-size: 12px; color: #ccc; transition: transform .2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* ── APPOINTMENTS CALENDAR ── */
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-day-header { text-align: center; font-size: 10px; font-weight: 700; color: #ccc; padding: 3px 0; }
+  .cal-day { text-align: center; padding: 6px 2px; border-radius: 7px; font-size: 11px; color: #555; cursor: default; }
+  .cal-day.marked { font-weight: 800; color: #fff; cursor: pointer; }
+
+  /* ── ALERT BOXES ── */
+  .alert-box { padding: 10px 14px; border-radius: 9px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .alert-warning { background: #fffbeb; border: 1px solid #fed7aa; }
+  .alert-info { background: #eff6ff; border: 1px solid #dbeafe; }
+  .alert-warning span { color: #c2410c; font-size: 12px; font-weight: 600; }
+  .alert-info span { color: #1d4ed8; font-size: 12px; font-weight: 600; }
+  .alert-time { font-size: 10px; color: #bbb; white-space: nowrap; margin-left: 10px; }
+
+  /* ── FAMILY HERO ── */
+  .family-hero {
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    border-radius: 14px; padding: 20px; margin-bottom: 18px; color: #fff;
+  }
+  .family-hero-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .family-hero-avatar {
+    width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; flex-shrink: 0;
+  }
+  .family-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .family-stat { background: rgba(255,255,255,.2); border-radius: 10px; padding: 11px; }
+  .family-stat-label { font-size: 10px; opacity: .7; }
+  .family-stat-val { font-size: 14px; font-weight: 800; margin-top: 3px; }
+  .family-stat-val.warn { color: #FCD34D; }
+
+  /* ── CHART TABS ── */
+  .tab-group { display: flex; gap: 8px; margin-bottom: 18px; }
+  .tab-btn { padding: 7px 16px; border-radius: 99px; border: none; font-size: 12px; font-weight: 700; transition: background .2s, color .2s; }
+  .tab-btn.active { background: #10B981; color: #fff; }
+  .tab-btn:not(.active) { background: #f0f0f0; color: #666; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── RESPONSIVE HELPERS ── */
+  .flex-row { display: flex; align-items: center; gap: 12px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .mb-4 { margin-bottom: 4px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-18 { margin-bottom: 18px; }
+  .mb-22 { margin-bottom: 22px; }
+  .mt-14 { margin-top: 14px; }
+  .gap-8 { gap: 8px; }
+  .gap-10 { gap: 10px; }
+  .w100 { width: 100%; }
+
+  /* ── INTENSITY COLORS ── */
+  .int-low { color: #10B981; font-weight: 700; }
+  .int-mid { color: #F59E0B; font-weight: 700; }
+  .int-high { color: #EF4444; font-weight: 700; }
+
+  /* ── CHART WRAPPER ── */
+  .chart-wrap { position: relative; height: 200px; margin-bottom: 8px; }
+  .chart-wrap-sm { position: relative; height: 130px; }
+  .chart-wrap-md { position: relative; height: 160px; }
+
+  /* ── SCROLL ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #f5f5f5; }
+  ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+  /* ── CHECKBOX CUSTOM ── */
+  .pref-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer; }
+  .pref-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #8B5CF6; cursor: pointer; }
+  .pref-row span { font-size: 12px; color: #555; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     LOGIN SCREEN (shown when logged out)
+════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div style="min-height:100vh;background:linear-gradient(135deg,#f0fdf4 0%,#e0f2fe 100%);display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="login-logo-icon">♥</div>
+        <h2>VitaTrack</h2>
+        <p>Plataforma de Saúde Pessoal</p>
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="login-email" value="maria@vitatrack.com">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pw" value="12345678">
+      </div>
+      <div class="forgot"><a href="#">Esqueci minha senha</a></div>
+      <button class="btn-primary" onclick="doLogin('patient')">Entrar</button>
+      <div class="demo-divider">
+        <p>Acesso de demonstração:</p>
+        <div class="demo-btns">
+          <button class="demo-btn demo-patient" onclick="doLogin('patient')">👤 Entrar como Paciente (Maria Silva)</button>
+          <button class="demo-btn demo-doctor" onclick="doLogin('doctor')">🩺 Entrar como Médico (Dr. Carlos)</button>
+          <button class="demo-btn demo-family" onclick="doLogin('family')">👨‍👩‍👦 Entrar como Familiar (João Silva)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MAIN APP (hidden until login)
+════════════════════════════════════════════ -->
+<div id="app-shell" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon" id="logo-icon">♥</div>
+      <span class="logo-text">VitaTrack</span>
+    </div>
+    <nav id="sidebar-nav"></nav>
+    <div class="sidebar-user">
+      <div class="avatar" id="sidebar-avatar"></div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#111;" id="sidebar-name"></div>
+        <div style="font-size:11px;color:#bbb;" id="sidebar-role"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div id="main">
+    <div id="topbar">
+      <h1 id="topbar-title">Dashboard</h1>
+      <div class="topbar-right">
+        <button id="notif-btn" onclick="toggleNotif()">🔔<div class="notif-badge">3</div></button>
+        <button id="logout-btn" onclick="doLogout()">Sair</button>
+      </div>
+    </div>
+    <div id="content">
+
+      <!-- ── PATIENT DASHBOARD ── -->
+      <div class="screen" id="screen-dashboard">
+        <div style="margin-bottom:20px;">
+          <h2 style="font-size:22px;font-weight:800;color:#111;margin-bottom:3px;">Olá, Maria! 👋</h2>
+          <p style="color:#aaa;font-size:13px;" id="today-date"></p>
+        </div>
+        <div class="grid-4">
+          <div class="stat-card" style="background:#f0fdf4;border:1px solid #10B98122;">
+            <div class="stat-label">Medicamentos hoje</div>
+            <div class="stat-val" style="color:#10B981;">2/4</div>
+            <div class="stat-sub">tomados</div>
+          </div>
+          <div class="stat-card" id="glicemia-card" style="background:#fffbeb;border:1px solid #F59E0B22;">
+            <div class="stat-label">Glicemia</div>
+            <div class="stat-val" id="glicemia-val" style="color:#F59E0B;">—</div>
+            <div class="stat-sub">mg/dL — hoje</div>
+          </div>
+          <div class="stat-card" style="background:#eff6ff;border:1px solid #3B82F622;">
+            <div class="stat-label">Pressão arterial</div>
+            <div class="stat-val" id="pressure-val" style="color:#3B82F6;">—</div>
+            <div class="stat-sub">mmHg — hoje</div>
+          </div>
+          <div class="stat-card" style="background:#faf5ff;border:1px solid #8B5CF622;">
+            <div class="stat-label">Sintomas esta semana</div>
+            <div class="stat-val" style="color:#8B5CF6;">2</div>
+            <div class="stat-sub">registros</div>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-bottom:18px;">
+          <div class="card">
+            <div class="card-title">Glicemia — últimos 15 dias</div>
+            <div class="chart-wrap-md"><canvas id="chart-dash-glicemia"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Próximas consultas</div>
+            <div style="background:#eff6ff;border-radius:10px;padding:13px;margin-bottom:10px;">
+              <div style="font-size:13px;color:#3B82F6;font-weight:700;">Dr. Carlos Oliveira</div>
+              <div style="font-size:11px;color:#aaa;margin-top:2px;">Clínico Geral</div>
+              <div style="font-size:20px;font-weight:800;color:#111;margin-top:10px;">15/06</div>
+              <div style="font-size:12px;color:#666;">às 14:00h</div>
+            </div>
+            <div style="background:#faf5ff;border-radius:10px;padding:13px;">
+              <div style="font-size:13px;color:#8B5CF6;font-weight:700;">Drª Ana Beatriz</div>
+              <div style="font-size:11px;color:#aaa;margin-top:2px;">Endocrinologista</div>
+              <div style="font-size:20px;font-weight:800;color:#111;margin-top:10px;">30/06</div>
+              <div style="font-size:12px;color:#666;">às 10:00h</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Medicamentos de hoje</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;" id="dash-meds-summary"></div>
+        </div>
+      </div>
+
+      <!-- ── SYMPTOM FORM ── -->
+      <div class="screen" id="screen-symptoms">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:20px;">Registrar Sintoma</h2>
+        <div class="card mb-18">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+            <div class="field">
+              <label>Data</label>
+              <input type="text" id="sym-date" readonly>
+            </div>
+            <div class="field">
+              <label>Tipo de Sintoma</label>
+              <select id="sym-type">
+                <option>Dor de cabeça</option><option>Náusea</option><option>Fadiga</option>
+                <option>Tontura</option><option>Dor no peito</option><option>Falta de ar</option>
+                <option>Dor abdominal</option><option>Palpitações</option><option>Visão turva</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Intensidade: <span id="int-label" style="color:#F59E0B;">5/10</span></label>
+            <input type="range" min="1" max="10" value="5" id="sym-intensity" oninput="updateIntensity(this.value)">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:3px;">
+              <span>Leve</span><span>Moderado</span><span>Severo</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Observação</label>
+            <textarea id="sym-note" rows="3" placeholder="Descreva mais detalhes..."></textarea>
+          </div>
+          <button class="btn btn-green" onclick="saveSymptom()">Salvar Registro</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Histórico de Sintomas</div>
+          <table>
+            <thead><tr><th>Data</th><th>Sintoma</th><th>Intensidade</th><th>Observação</th></tr></thead>
+            <tbody id="symptoms-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── MEDICATIONS ── -->
+      <div class="screen" id="screen-medications">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:4px;">Medicamentos do Dia</h2>
+        <p style="color:#aaa;font-size:13px;margin-bottom:16px;" id="meds-progress-text"></p>
+        <div class="progress-wrap"><div class="progress-bar" id="meds-progress-bar"></div></div>
+        <div id="meds-list"></div>
+        <div class="card mt-14">
+          <div class="card-title">📋 Histórico recente</div>
+          <div style="font-size:13px;color:#888;padding:5px 0;border-bottom:1px solid #f0f0f0;">Ontem — 3/3 tomados ✓</div>
+          <div style="font-size:13px;color:#888;padding:5px 0;border-bottom:1px solid #f0f0f0;">05/06 — 2/3 tomados</div>
+          <div style="font-size:13px;color:#888;padding:5px 0;">04/06 — 3/3 tomados ✓</div>
+        </div>
+      </div>
+
+      <!-- ── CHARTS ── -->
+      <div class="screen" id="screen-charts">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:18px;">Evolução Clínica</h2>
+        <div class="tab-group">
+          <button class="tab-btn active" onclick="switchTab('glicemia',this)">Glicemia</button>
+          <button class="tab-btn" onclick="switchTab('pressao',this)">Pressão Arterial</button>
+          <button class="tab-btn" onclick="switchTab('humor',this)">Humor</button>
+        </div>
+        <div class="card mb-18">
+          <!-- Glicemia tab -->
+          <div class="tab-panel active" id="tab-glicemia">
+            <div class="flex-between mb-12">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#333;">Glicemia (mg/dL) — últimos 30 dias</div>
+                <div style="font-size:11px;color:#aaa;margin-top:2px;">Linha laranja = limite 180 mg/dL</div>
+              </div>
+              <div style="display:flex;gap:18px;">
+                <div style="text-align:center;"><div style="font-size:10px;color:#aaa;">Média</div><div style="font-size:13px;font-weight:800;color:#111;">152 mg/dL</div></div>
+                <div style="text-align:center;"><div style="font-size:10px;color:#aaa;">Máx</div><div style="font-size:13px;font-weight:800;color:#111;">278 mg/dL</div></div>
+                <div style="text-align:center;"><div style="font-size:10px;color:#aaa;">Mín</div><div style="font-size:13px;font-weight:800;color:#111;">94 mg/dL</div></div>
+              </div>
+            </div>
+            <div class="chart-wrap"><canvas id="chart-glicemia"></canvas></div>
+          </div>
+          <!-- Pressure tab -->
+          <div class="tab-panel" id="tab-pressao">
+            <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:3px;">Pressão Arterial (mmHg)</div>
+            <div style="font-size:11px;color:#aaa;margin-bottom:12px;">Azul = sistólica · Verde = diastólica</div>
+            <div class="chart-wrap"><canvas id="chart-pressao"></canvas></div>
+          </div>
+          <!-- Humor tab -->
+          <div class="tab-panel" id="tab-humor">
+            <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:12px;">Humor (escala 1–10)</div>
+            <div class="chart-wrap"><canvas id="chart-humor"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div style="background:#f0fdf4;border-radius:12px;padding:14px;border:1px solid #10B98122;">
+            <div style="font-size:18px;margin-bottom:6px;">📊</div>
+            <div style="font-size:13px;font-weight:700;color:#10B981;">Glicemia controlada</div>
+            <div style="font-size:11px;color:#aaa;margin-top:3px;">18 de 30 dias dentro da meta</div>
+          </div>
+          <div style="background:#fffbeb;border-radius:12px;padding:14px;border:1px solid #F59E0B22;">
+            <div style="font-size:18px;margin-bottom:6px;">⚠️</div>
+            <div style="font-size:13px;font-weight:700;color:#F59E0B;">Pressão elevada</div>
+            <div style="font-size:11px;color:#aaa;margin-top:3px;">8 episódios acima de 140/90</div>
+          </div>
+          <div style="background:#faf5ff;border-radius:12px;padding:14px;border:1px solid #8B5CF622;">
+            <div style="font-size:18px;margin-bottom:6px;">😊</div>
+            <div style="font-size:13px;font-weight:700;color:#8B5CF6;">Humor médio</div>
+            <div style="font-size:11px;color:#aaa;margin-top:3px;">6.2/10 na média do mês</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── APPOINTMENTS ── -->
+      <div class="screen" id="screen-appointments">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:20px;">Consultas</h2>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Junho 2025</div>
+            <div class="cal-grid" id="cal-grid"></div>
+            <div style="margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:5px;font-size:11px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#3B82F6;"></div>
+                <span style="color:#666;">Dia 15 — Dr. Carlos</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:11px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#8B5CF6;"></div>
+                <span style="color:#666;">Dia 30 — Drª Ana</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card mb-12">
+              <div class="card-title">Próximas consultas</div>
+              <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f9f9f9;">
+                <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+                  <div style="font-size:15px;font-weight:800;color:#3B82F6;line-height:1;">15</div>
+                  <div style="font-size:9px;color:#aaa;">Jun</div>
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#111;">Dr. Carlos Oliveira</div>
+                  <div style="font-size:11px;color:#aaa;">Clínico Geral · 14:00h</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:10px 0;">
+                <div style="width:44px;height:44px;border-radius:10px;background:#faf5ff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+                  <div style="font-size:15px;font-weight:800;color:#8B5CF6;line-height:1;">30</div>
+                  <div style="font-size:9px;color:#aaa;">Jun</div>
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#111;">Drª Ana Beatriz</div>
+                  <div style="font-size:11px;color:#aaa;">Endocrinologista · 10:00h</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">Histórico</div>
+              <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f9f9f9;opacity:.55;">
+                <div style="width:44px;height:44px;border-radius:10px;background:#f5f5f5;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+                  <div style="font-size:15px;font-weight:800;color:#aaa;line-height:1;">12</div>
+                  <div style="font-size:9px;color:#ccc;">Mai</div>
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#888;">Dr. Carlos Oliveira</div>
+                  <div style="font-size:11px;color:#bbb;">Clínico Geral · Realizada</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:10px 0;opacity:.55;">
+                <div style="width:44px;height:44px;border-radius:10px;background:#f5f5f5;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+                  <div style="font-size:15px;font-weight:800;color:#aaa;line-height:1;">18</div>
+                  <div style="font-size:9px;color:#ccc;">Abr</div>
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#888;">Drª Ana Beatriz</div>
+                  <div style="font-size:11px;color:#bbb;">Endocrinologista · Realizada</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DOCTOR DASHBOARD ── -->
+      <div class="screen" id="screen-doctor-dash">
+        <div class="flex-between mb-18">
+          <h2 style="font-size:19px;font-weight:800;color:#111;">Meus Pacientes</h2>
+          <div style="display:flex;gap:8px;">
+            <span class="badge badge-orange">⚠ 2 críticos</span>
+            <span class="badge badge-green">5 pacientes</span>
+          </div>
+        </div>
+        <div id="patients-list"></div>
+      </div>
+
+      <!-- ── DOCTOR PRESCRIPTIONS ── -->
+      <div class="screen" id="screen-doctor-rx">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:20px;">Prescrições Emitidas</h2>
+        <div id="rx-list"></div>
+      </div>
+
+      <!-- ── DOCTOR SCHEDULE ── -->
+      <div class="screen" id="screen-doctor-sched">
+        <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:20px;">Agenda — Junho 2025</h2>
+        <div id="sched-list"></div>
+      </div>
+
+      <!-- ── FAMILY DASHBOARD ── -->
+      <div class="screen" id="screen-family-dash">
+        <div style="margin-bottom:18px;">
+          <h2 style="font-size:19px;font-weight:800;color:#111;margin-bottom:3px;">Painel do Familiar</h2>
+          <p style="color:#aaa;font-size:13px;">Acompanhando: <strong style="color:#8B5CF6;">Maria Silva</strong></p>
+        </div>
+        <div class="family-hero">
+          <div class="family-hero-top">
+            <div class="family-hero-avatar">MS</div>
+            <div>
+              <div style="font-size:18px;font-weight:800;">Maria Silva</div>
+              <div style="font-size:12px;opacity:.8;">58 anos · Diabetes Tipo 2, Hipertensão</div>
+            </div>
+            <div style="margin-left:auto;text-align:right;">
+              <div style="font-size:11px;opacity:.65;">Última atualização</div>
+              <div style="font-size:13px;font-weight:700;">Hoje, 08:45</div>
+            </div>
+          </div>
+          <div class="family-stats">
+            <div class="family-stat">
+              <div class="family-stat-label">Glicemia</div>
+              <div class="family-stat-val warn" id="family-glicemia-val">— mg/dL</div>
+            </div>
+            <div class="family-stat">
+              <div class="family-stat-label">Pressão</div>
+              <div class="family-stat-val warn" id="family-pressure-val">—/— mmHg</div>
+            </div>
+            <div class="family-stat">
+              <div class="family-stat-label">Medicamentos</div>
+              <div class="family-stat-val">2/4 tomados</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <div class="card mb-12">
+              <div class="card-title">⚠ Alertas Ativos</div>
+              <div class="alert-box alert-warning">
+                <span>⚠ Glicemia acima de 250 hoje</span>
+                <span class="alert-time">Hoje, 08:30</span>
+              </div>
+              <div class="alert-box alert-info">
+                <span>ℹ Consulta amanhã com Dr. Carlos às 14h</span>
+                <span class="alert-time">Amanhã</span>
+              </div>
+              <div class="alert-box alert-warning">
+                <span>⚠ Metformina 20h ainda não tomada</span>
+                <span class="alert-time">Hoje, 20:00</span>
+              </div>
+            </div>
+            <div class="card mb-12">
+              <div class="card-title">Glicemia — últimos 15 dias</div>
+              <div class="chart-wrap-sm"><canvas id="chart-family-glicemia"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Últimos 5 registros</div>
+              <table>
+                <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th></tr></thead>
+                <tbody>
+                  <tr><td style="color:#aaa;">05/06</td><td style="font-weight:700;color:#333;">Glicemia</td><td style="color:#c2410c;font-weight:700;">245 mg/dL</td></tr>
+                  <tr><td style="color:#aaa;">05/06</td><td style="font-weight:700;color:#333;">Pressão</td><td style="color:#c2410c;font-weight:700;">148/92 mmHg</td></tr>
+                  <tr><td style="color:#aaa;">04/06</td><td style="font-weight:700;color:#333;">Glicemia</td><td style="color:#10B981;">168 mg/dL</td></tr>
+                  <tr><td style="color:#aaa;">03/06</td><td style="font-weight:700;color:#333;">Humor</td><td style="color:#10B981;">7/10</td></tr>
+                  <tr><td style="color:#aaa;">02/06</td><td style="font-weight:700;color:#333;">Glicemia</td><td style="color:#10B981;">152 mg/dL</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" style="height:fit-content;">
+            <div class="card-title">Configurar Alertas</div>
+            <label class="pref-row"><input type="checkbox" checked onchange="showToast('Preferência salva!')"><span>🩸 Glicemia alta (&gt;200 mg/dL)</span></label>
+            <label class="pref-row"><input type="checkbox" checked onchange="showToast('Preferência salva!')"><span>💓 Pressão elevada (&gt;140/90)</span></label>
+            <label class="pref-row"><input type="checkbox" checked onchange="showToast('Preferência salva!')"><span>💊 Medicamento não tomado</span></label>
+            <label class="pref-row"><input type="checkbox" checked onchange="showToast('Preferência salva!')"><span>📅 Lembretes de consultas</span></label>
+            <button class="btn btn-purple w100" style="margin-top:12px;" onclick="showToast('Configurações salvas!')">Salvar Configurações</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#content -->
+  </div><!-- /#main -->
+</div><!-- /#app-shell -->
+
+<!-- NOTIFICATIONS PANEL -->
+<div id="notif-panel">
+  <div class="notif-header">
+    <span>Notificações</span>
+    <button onclick="toggleNotif()">✕</button>
+  </div>
+  <div class="notif-item">
+    <span style="font-size:16px;">⚠️</span>
+    <div><div class="notif-msg">Glicemia acima de 250 hoje</div><div class="notif-time">Hoje, 08:30</div></div>
+  </div>
+  <div class="notif-item">
+    <span style="font-size:16px;">ℹ️</span>
+    <div><div class="notif-msg">Consulta amanhã com Dr. Carlos às 14h</div><div class="notif-time">Amanhã</div></div>
+  </div>
+  <div class="notif-item">
+    <span style="font-size:16px;">⚠️</span>
+    <div><div class="notif-msg">Metformina 20h ainda não tomada</div><div class="notif-time">Hoje, 20:00</div></div>
+  </div>
+</div>
+<div id="overlay" onclick="closeOverlays()"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════
+const GLICEMIA = Array.from({length:30},(_,i)=>Math.floor(Math.random()*180+90));
+const PRESS_S  = Array.from({length:30},(_,i)=>Math.floor(Math.random()*40+120));
+const PRESS_D  = Array.from({length:30},(_,i)=>Math.floor(Math.random()*20+75));
+const HUMOR    = Array.from({length:30},(_,i)=>Math.floor(Math.random()*7+3));
+const DAYS     = Array.from({length:30},(_,i)=>`${i+1}/05`);
+
+let symptoms = [
+  {date:'04/06/2025', type:'Dor de cabeça', intensity:6, note:'Após o almoço'},
+  {date:'02/06/2025', type:'Fadiga',         intensity:4, note:'Manhã'},
+  {date:'30/05/2025', type:'Náusea',         intensity:3, note:'Passou após medicação'},
+  {date:'28/05/2025', type:'Tontura',        intensity:5, note:'Ao levantar'},
+];
+
+let meds = [
+  {name:'Metformina', dose:'850mg', color:'#10B981', times:['08:00','20:00'], taken:[true,false]},
+  {name:'Losartana',  dose:'50mg',  color:'#3B82F6', times:['08:00'],         taken:[true]},
+  {name:'AAS',        dose:'100mg', color:'#F59E0B', times:['12:00'],         taken:[false]},
+];
+
+const PATIENTS = [
+  {name:'Maria Silva',    age:58, last:'12/05/2025', cond:'Diabetes, Hipertensão', critical:true,  av:'MS'},
+  {name:'Roberto Almeida',age:72, last:'20/05/2025', cond:'Insuf. Cardíaca',       critical:false, av:'RA'},
+  {name:'Sônia Pereira',  age:45, last:'01/06/2025', cond:'Asma, Ansiedade',       critical:false, av:'SP'},
+  {name:'Antônio Costa',  age:67, last:'10/05/2025', cond:'DPOC',                  critical:true,  av:'AC'},
+  {name:'Fernanda Lima',  age:34, last:'28/05/2025', cond:'Hipotiroidismo',         critical:false, av:'FL'},
+];
+
+const RX = [
+  {patient:'Maria Silva',    drug:'Metformina 850mg', date:'12/05/2025'},
+  {patient:'Maria Silva',    drug:'Losartana 50mg',   date:'12/05/2025'},
+  {patient:'Roberto Almeida',drug:'Carvedilol 25mg',  date:'20/05/2025'},
+  {patient:'Antônio Costa',  drug:'Salmeterol 25mcg', date:'10/05/2025'},
+];
+
+const SCHED = [
+  {time:'09:00', patient:'Roberto Almeida', type:'Retorno',  date:'10/06'},
+  {time:'10:30', patient:'Sônia Pereira',   type:'Consulta', date:'11/06'},
+  {time:'14:00', patient:'Maria Silva',     type:'Retorno',  date:'15/06'},
+  {time:'09:00', patient:'Fernanda Lima',   type:'Consulta', date:'18/06'},
+  {time:'11:00', patient:'Antônio Costa',   type:'Urgência', date:'20/06'},
+];
+
+// ════════════════════════════════════════════
+// ROLE CONFIG
+// ════════════════════════════════════════════
+const ROLE_CFG = {
+  patient: {
+    accent:'#10B981', name:'Maria Silva', initials:'MS', label:'Paciente',
+    menu:[
+      {id:'dashboard',    label:'Dashboard',    ic:'⊡'},
+      {id:'symptoms',     label:'Registros',    ic:'✎'},
+      {id:'medications',  label:'Medicamentos', ic:'💊'},
+      {id:'charts',       label:'Evolução',     ic:'📈'},
+      {id:'appointments', label:'Consultas',    ic:'📅'},
+    ]
+  },
+  doctor: {
+    accent:'#3B82F6', name:'Dr. Carlos Oliveira', initials:'CO', label:'Médico',
+    menu:[
+      {id:'doctor-dash', label:'Pacientes',   ic:'⊡'},
+      {id:'doctor-rx',   label:'Prescrições', ic:'✎'},
+      {id:'doctor-sched',label:'Agenda',      ic:'📅'},
+    ]
+  },
+  family: {
+    accent:'#8B5CF6', name:'João Silva', initials:'JS', label:'Familiar',
+    menu:[
+      {id:'family-dash',   label:'Painel',   ic:'⊡'},
+      {id:'family-alerts', label:'Alertas',  ic:'⚡'},
+      {id:'family-charts', label:'Gráficos', ic:'📈'},
+    ]
+  }
+};
+
+const SCREEN_TITLES = {
+  'dashboard':'Dashboard','symptoms':'Registrar Sintomas','medications':'Medicamentos',
+  'charts':'Evolução Clínica','appointments':'Consultas',
+  'doctor-dash':'Meus Pacientes','doctor-rx':'Prescrições','doctor-sched':'Agenda',
+  'family-dash':'Painel Familiar','family-alerts':'Alertas','family-charts':'Gráficos',
+};
+
+let currentRole = null;
+let currentScreen = null;
+let chartsBuilt = {};
+let toastTimer = null;
+
+// ════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════
+function doLogin(role) {
+  currentRole = role;
+  const cfg = ROLE_CFG[role];
+
+  // Logo color
+  document.getElementById('logo-icon').style.background = cfg.accent;
+
+  // Sidebar avatar
+  const av = document.getElementById('sidebar-avatar');
+  av.style.width = '32px'; av.style.height = '32px';
+  av.style.fontSize = '11px'; av.style.background = cfg.accent + '22';
+  av.style.color = cfg.accent; av.textContent = cfg.initials;
+
+  document.getElementById('sidebar-name').textContent = cfg.name.split(' ')[0];
+  document.getElementById('sidebar-role').textContent = cfg.label;
+
+  buildNav(role);
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+
+  const defaultScreen = role === 'patient' ? 'dashboard' : role === 'doctor' ? 'doctor-dash' : 'family-dash';
+  navigate(defaultScreen);
+
+  // Set today date
+  const d = new Date();
+  const opts = {weekday:'long', day:'numeric', month:'long', year:'numeric'};
+  const el = document.getElementById('today-date');
+  if(el) el.textContent = d.toLocaleDateString('pt-BR', opts);
+}
+
+function doLogout() {
+  currentRole = null;
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'block';
+  chartsBuilt = {};
+}
+
+// ════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════
+function buildNav(role) {
+  const cfg = ROLE_CFG[role];
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+  cfg.menu.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.id = 'nav-' + item.id;
+    btn.innerHTML = `<span style="font-size:13px;opacity:.8;">${item.ic}</span>${item.label}`;
+    btn.onclick = () => navigate(item.id);
+    nav.appendChild(btn);
+  });
+}
+
+function navigate(screen) {
+  // Hide all
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'transparent';
+    b.style.color = '#666';
+  });
+
+  const cfg = ROLE_CFG[currentRole];
+
+  // Show target
+  const target = document.getElementById('screen-' + screen);
+  if (target) target.classList.add('active');
+
+  const activeBtn = document.getElementById('nav-' + screen);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.style.background = cfg.accent + '18';
+    activeBtn.style.color = cfg.accent;
+  }
+
+  document.getElementById('topbar-title').textContent = SCREEN_TITLES[screen] || 'VitaTrack';
+  currentScreen = screen;
+
+  // Build screen-specific content
+  if (screen === 'dashboard')       buildDashboard();
+  if (screen === 'medications')     buildMeds();
+  if (screen === 'symptoms')        buildSymptomsTable();
+  if (screen === 'charts')          buildCharts();
+  if (screen === 'appointments')    buildCalendar();
+  if (screen === 'doctor-dash')     buildPatients();
+  if (screen === 'doctor-rx')       buildRx();
+  if (screen === 'doctor-sched')    buildSched();
+  if (screen === 'family-dash')     buildFamily();
+  if (screen === 'family-alerts')   navigate('family-dash');
+  if (screen === 'family-charts')   { navigate('charts'); }
+}
+
+// ════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════
+function buildDashboard() {
+  // Stats
+  const g = GLICEMIA[GLICEMIA.length-1];
+  const el = document.getElementById('glicemia-val');
+  if(el) { el.textContent = g + ' mg/dL'; el.style.color = g > 180 ? '#F59E0B' : '#10B981'; }
+  const pEl = document.getElementById('pressure-val');
+  if(pEl) pEl.textContent = PRESS_S[PRESS_S.length-1] + '/' + PRESS_D[PRESS_D.length-1];
+
+  // Meds summary
+  const sumEl = document.getElementById('dash-meds-summary');
+  if(sumEl) {
+    sumEl.innerHTML = '';
+    meds.forEach(m => {
+      m.times.forEach((t, i) => {
+        const div = document.createElement('div');
+        div.style.cssText = `padding:7px 13px;border-radius:20px;background:${m.taken[i]?'#f0fdf4':'#fafafa'};border:1px solid ${m.taken[i]?'#d1fae5':'#e5e5e5'};display:flex;align-items:center;gap:7px;`;
+        div.innerHTML = `<span style="font-size:12px;">${m.taken[i]?'✅':'⭕'}</span><span style="font-size:12px;font-weight:600;color:${m.taken[i]?'#10B981':'#555'};">${m.name} ${m.dose}</span><span style="font-size:10px;color:#aaa;">${t}</span>`;
+        sumEl.appendChild(div);
+      });
+    });
+  }
+
+  // Mini chart
+  if (!chartsBuilt['dash-glicemia']) {
+    chartsBuilt['dash-glicemia'] = true;
+    buildLineChart('chart-dash-glicemia', DAYS.slice(-15), [GLICEMIA.slice(-15)], ['#10B981'], ['Glicemia'], 180, '#F59E0B');
+  }
+}
+
+// ════════════════════════════════════════════
+// SYMPTOMS
+// ════════════════════════════════════════════
+function buildSymptomsTable() {
+  const el = document.getElementById('sym-date');
+  if(el) el.value = new Date().toLocaleDateString('pt-BR');
+  renderSymptomsTable();
+}
+
+function renderSymptomsTable() {
+  const tb = document.getElementById('symptoms-table');
+  if(!tb) return;
+  tb.innerHTML = '';
+  symptoms.forEach(s => {
+    const ic = s.intensity > 7 ? '#EF4444' : s.intensity > 4 ? '#F59E0B' : '#10B981';
+    tb.innerHTML += `<tr>
+      <td style="color:#888;">${s.date}</td>
+      <td style="font-weight:700;color:#111;">${s.type}</td>
+      <td style="color:${ic};font-weight:700;">${s.intensity}/10</td>
+      <td style="color:#aaa;">${s.note||'—'}</td>
+    </tr>`;
+  });
+}
+
+function updateIntensity(val) {
+  const ic = val > 7 ? '#EF4444' : val > 4 ? '#F59E0B' : '#10B981';
+  const el = document.getElementById('int-label');
+  if(el) { el.textContent = val+'/10'; el.style.color = ic; }
+  const rng = document.getElementById('sym-intensity');
+  if(rng) rng.style.accentColor = ic;
+}
+
+function saveSymptom() {
+  const type = document.getElementById('sym-type').value;
+  const intensity = parseInt(document.getElementById('sym-intensity').value);
+  const note = document.getElementById('sym-note').value;
+  const date = document.getElementById('sym-date').value;
+  symptoms.unshift({date, type, intensity, note});
+  document.getElementById('sym-note').value = '';
+  document.getElementById('sym-intensity').value = 5;
+  updateIntensity(5);
+  renderSymptomsTable();
+  showToast('Sintoma registrado com sucesso! ✓');
+}
+
+// ════════════════════════════════════════════
+// MEDICATIONS
+// ════════════════════════════════════════════
+function buildMeds() {
+  updateMedsProgress();
+  const list = document.getElementById('meds-list');
+  if(!list) return;
+  list.innerHTML = '';
+  meds.forEach((m, mi) => {
+    const card = document.createElement('div');
+    card.className = 'med-card';
+    const timesHTML = m.times.map((t, ti) => `
+      <button class="med-time-btn ${m.taken[ti]?'taken':'pending'}" id="med-btn-${mi}-${ti}" onclick="toggleMed(${mi},${ti})">
+        <span>${m.taken[ti]?'✓':'○'}</span>${t} — ${m.taken[ti]?'Tomado':'Tomar'}
+      </button>`).join('');
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div class="med-icon" style="background:${m.color}22;">💊</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111;">${m.name}</div>
+          <div style="font-size:12px;color:#aaa;">${m.dose}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">${timesHTML}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function toggleMed(mi, ti) {
+  meds[mi].taken[ti] = !meds[mi].taken[ti];
+  const btn = document.getElementById(`med-btn-${mi}-${ti}`);
+  if(btn) {
+    btn.className = `med-time-btn ${meds[mi].taken[ti]?'taken':'pending'}`;
+    btn.innerHTML = `<span>${meds[mi].taken[ti]?'✓':'○'}</span>${meds[mi].times[ti]} — ${meds[mi].taken[ti]?'Tomado':'Tomar'}`;
+  }
+  if(meds[mi].taken[ti]) showToast(`${meds[mi].name} ${meds[mi].dose} marcado como tomado! ✓`);
+  updateMedsProgress();
+}
+
+function updateMedsProgress() {
+  const taken = meds.reduce((a,m) => a + m.taken.filter(Boolean).length, 0);
+  const total  = meds.reduce((a,m) => a + m.times.length, 0);
+  const ptxt = document.getElementById('meds-progress-text');
+  if(ptxt) ptxt.textContent = `${taken}/${total} tomados hoje`;
+  const pbar = document.getElementById('meds-progress-bar');
+  if(pbar) pbar.style.width = `${(taken/total)*100}%`;
+}
+
+// ════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════
+function buildCharts() {
+  if(!chartsBuilt['glicemia']) {
+    chartsBuilt['glicemia'] = true;
+    buildLineChart('chart-glicemia', DAYS, [GLICEMIA], ['#10B981'], ['Glicemia (mg/dL)'], 180, '#F59E0B');
+  }
+  if(!chartsBuilt['pressao']) {
+    chartsBuilt['pressao'] = true;
+    buildLineChart('chart-pressao', DAYS, [PRESS_S, PRESS_D], ['#3B82F6','#10B981'], ['Sistólica','Diastólica'], 140, '#F59E0B');
+  }
+  if(!chartsBuilt['humor']) {
+    chartsBuilt['humor'] = true;
+    buildBarChart('chart-humor', DAYS, HUMOR, '#8B5CF6', 'Humor');
+  }
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ════════════════════════════════════════════
+// CALENDAR
+// ════════════════════════════════════════════
+function buildCalendar() {
+  const grid = document.getElementById('cal-grid');
+  if(!grid || grid.children.length > 7) return;
+  const days = ['D','S','T','Q','Q','S','S'];
+  days.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-day-header'; h.textContent = d;
+    grid.appendChild(h);
+  });
+  const marked = {15:{color:'#3B82F6'}, 30:{color:'#8B5CF6'}};
+  for(let i=1; i<=30; i++) {
+    const d = document.createElement('div');
+    d.className = 'cal-day';
+    d.textContent = i;
+    if(marked[i]) {
+      d.classList.add('marked');
+      d.style.background = marked[i].color;
+    }
+    grid.appendChild(d);
+  }
+}
+
+// ════════════════════════════════════════════
+// DOCTOR
+// ════════════════════════════════════════════
+function buildPatients() {
+  const list = document.getElementById('patients-list');
+  if(!list) return;
+  list.innerHTML = '';
+  PATIENTS.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = `patient-card${p.critical?' critical':''}`;
+    const accentColor = p.critical ? '#F59E0B' : '#3B82F6';
+    card.innerHTML = `
+      <div class="patient-header" onclick="togglePatient(${idx})">
+        <div class="avatar" style="width:40px;height:40px;font-size:12px;background:${accentColor}22;color:${accentColor};">${p.av}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:14px;font-weight:700;color:#111;">${p.name}</span>
+            ${p.critical?'<span class="badge badge-orange" style="font-size:10px;">CRÍTICO</span>':''}
+          </div>
+          <div style="font-size:12px;color:#aaa;margin-top:2px;">${p.age} anos · ${p.cond} · Última: ${p.last}</div>
+        </div>
+        <span class="chevron" id="chev-${idx}">▼</span>
+      </div>
+      <div class="patient-body" id="pbody-${idx}">
+        <div style="padding-top:14px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">Últimos registros</div>
+          <table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th><th>Observação</th></tr></thead>
+            <tbody>
+              <tr><td style="color:#aaa;">05/06</td><td style="font-weight:700;">Glicemia</td><td style="color:#F59E0B;font-weight:700;">245 mg/dL</td><td style="color:#aaa;">Em jejum</td></tr>
+              <tr><td style="color:#aaa;">04/06</td><td style="font-weight:700;">Pressão</td><td style="color:#F59E0B;font-weight:700;">148/92 mmHg</td><td style="color:#aaa;">Após atividade</td></tr>
+              <tr><td style="color:#aaa;">03/06</td><td style="font-weight:700;">Glicemia</td><td style="color:#10B981;">168 mg/dL</td><td style="color:#aaa;">2h pós-prandial</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="height:110px;margin-bottom:14px;"><canvas id="pchart-${idx}"></canvas></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-blue" onclick="showToast('Prescrição emitida para ${p.name}! ✓')">📋 Emitir Prescrição</button>
+          <button class="btn btn-outline-green" onclick="showToast('Consulta agendada para ${p.name}! ✓')">📅 Agendar Consulta</button>
+          <button class="btn btn-ghost">📈 Ver Histórico</button>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function togglePatient(idx) {
+  const body = document.getElementById('pbody-'+idx);
+  const chev = document.getElementById('chev-'+idx);
+  const isOpen = body.classList.contains('open');
+  // close all
+  document.querySelectorAll('.patient-body').forEach(b => b.classList.remove('open'));
+  document.querySelectorAll('.chevron').forEach(c => { c.classList.remove('open'); c.textContent='▼'; });
+  if(!isOpen) {
+    body.classList.add('open');
+    chev.classList.add('open'); chev.textContent='▲';
+    if(!chartsBuilt['pc-'+idx]) {
+      chartsBuilt['pc-'+idx] = true;
+      setTimeout(() => {
+        buildLineChart('pchart-'+idx, DAYS.slice(-10), [GLICEMIA.slice(-10)], ['#3B82F6'], ['Glicemia'], 180, '#F59E0B');
+      }, 50);
+    }
+  }
+}
+
+function buildRx() {
+  const list = document.getElementById('rx-list');
+  if(!list) return;
+  list.innerHTML = '';
+  RX.forEach(r => {
+    list.innerHTML += `
+      <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#111;">${r.drug}</div>
+          <div style="font-size:12px;color:#aaa;">${r.patient} · Prescrito em ${r.date}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-green">Ativa</span>
+          <button class="btn btn-outline-blue" onclick="showToast('Prescrição renovada!')">Renovar</button>
+        </div>
+      </div>`;
+  });
+}
+
+function buildSched() {
+  const list = document.getElementById('sched-list');
+  if(!list) return;
+  list.innerHTML = '';
+  SCHED.forEach(a => {
+    const isUrg = a.type === 'Urgência';
+    list.innerHTML += `
+      <div style="background:#fff;border-radius:12px;padding:13px 16px;border:1px solid #f0f0f0;display:flex;gap:14px;align-items:center;margin-bottom:10px;">
+        <div style="width:50px;text-align:center;flex-shrink:0;">
+          <div style="font-size:16px;font-weight:800;color:#3B82F6;">${a.date.split('/')[0]}</div>
+          <div style="font-size:9px;color:#aaa;">Jun</div>
+        </div>
+        <div style="width:1px;height:36px;background:#f0f0f0;flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#111;">${a.patient}</div>
+          <div style="font-size:11px;color:#aaa;">${a.time}h · ${a.type}</div>
+        </div>
+        <span class="badge ${isUrg?'badge-orange':'badge-green'}" style="margin-left:auto;">${a.type}</span>
+      </div>`;
+  });
+}
+
+// ════════════════════════════════════════════
+// FAMILY
+// ════════════════════════════════════════════
+function buildFamily() {
+  const g = GLICEMIA[GLICEMIA.length-1];
+  const fgEl = document.getElementById('family-glicemia-val');
+  if(fgEl) fgEl.textContent = g + ' mg/dL';
+  const fpEl = document.getElementById('family-pressure-val');
+  if(fpEl) fpEl.textContent = PRESS_S[PRESS_S.length-1] + '/' + PRESS_D[PRESS_D.length-1] + ' mmHg';
+  if(!chartsBuilt['family-glicemia']) {
+    chartsBuilt['family-glicemia'] = true;
+    setTimeout(() => {
+      buildLineChart('chart-family-glicemia', DAYS.slice(-15), [GLICEMIA.slice(-15)], ['#8B5CF6'], ['Glicemia'], 180, '#F59E0B');
+    }, 50);
+  }
+}
+
+// ════════════════════════════════════════════
+// CHART BUILDERS
+// ════════════════════════════════════════════
+function buildLineChart(id, labels, datasets, colors, names, refValue, refColor) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const existing = Chart.getChart(canvas);
+  if(existing) existing.destroy();
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map((data, i) => ({
+        label: names[i],
+        data,
+        borderColor: colors[i],
+        backgroundColor: colors[i] + '18',
+        borderWidth: 2.5,
+        pointRadius: datasets.length === 1 ? 2 : 0,
+        tension: 0.4,
+        fill: datasets.length === 1,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: datasets.length > 1, labels: { font: { size: 10 }, boxWidth: 12 }},
+        tooltip: { titleFont: { size: 11 }, bodyFont: { size: 11 } },
+        annotation: refValue ? {
+          annotations: { ref: { type:'line', yMin:refValue, yMax:refValue, borderColor:refColor, borderWidth:1.5, borderDash:[4,4] } }
+        } : undefined,
+      },
+      scales: {
+        x: { ticks: { font: { size: 9 }, color: '#aaa' }, grid: { color: '#f5f5f5' } },
+        y: { ticks: { font: { size: 9 }, color: '#aaa' }, grid: { color: '#f5f5f5' } },
+      },
+    }
+  });
+}
+
+function buildBarChart(id, labels, data, color, name) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const existing = Chart.getChart(canvas);
+  if(existing) existing.destroy();
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: name, data, backgroundColor: color + 'cc', borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { titleFont:{size:11}, bodyFont:{size:11} } },
+      scales: {
+        x: { ticks: { font:{size:9}, color:'#aaa' }, grid: { color:'#f5f5f5' } },
+        y: { ticks: { font:{size:9}, color:'#aaa' }, grid: { color:'#f5f5f5' }, max: 10 },
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════
+// TOAST & NOTIF
+// ════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+
+function toggleNotif() {
+  const panel = document.getElementById('notif-panel');
+  const overlay = document.getElementById('overlay');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+}
+
+function closeOverlays() {
+  document.getElementById('notif-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>
